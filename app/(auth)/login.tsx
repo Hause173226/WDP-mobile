@@ -13,8 +13,9 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { COLORS } from '@/constants/colors';
 import Button from '@/components/Button';
-import { api } from '@/services/api';
 import { useUserStore } from '@/store/userStore';
+import { authAPI } from '@/services/authService';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export default function LoginScreen() {
   const router = useRouter();
@@ -31,37 +32,38 @@ export default function LoginScreen() {
 
     setLoading(true);
     try {
-      // Comment code API thật
-      // const result = await api.auth.login(email, password);
-      // if (result.user) {
-      //   await login({
-      //     id: result.user.id,
-      //     email: result.user.email || '',
-      //     name: result.user.user_metadata?.name || 'User',
-      //     role: 'member',
-      //     createdAt: result.user.created_at,
-      //   });
-      //   router.replace('/(tabs)');
-      // }
+      // Gọi API signin từ BE mới
+      const result = await authAPI.signIn({ email, password });
 
-      // Mock login - chấp nhận bất kỳ email/password nào
-      console.log('Mock login với:', email, password);
+      console.log('✅ Login result:', result);
 
-      // Tạo user giả
-      await login({
-        id: '123456789',
-        email: email,
-        name: 'Test User',
-        role: 'member',
-        createdAt: new Date().toISOString(),
-      });
+      // BE trả về accessToken, không phải token
+      if (result?.user && result?.accessToken) {
+        // Lưu token vào AsyncStorage
+        await AsyncStorage.setItem('accessToken', result.accessToken);
+        await AsyncStorage.setItem('refreshToken', result.refreshToken);
 
-      // Chuyển đến màn hình chính
-      router.replace('/(tabs)');
+        // Lưu user vào store
+        await login({
+          id: result.user._id || result.user.id || '',
+          email: result.user.email || email,
+          name: result.user.fullName || result.user.name || 'User',
+          role: result.user.role || 'member',
+          createdAt: result.user.createdAt || new Date().toISOString(),
+        });
+
+        Alert.alert('Thành công', 'Đăng nhập thành công!');
+        router.replace('/(tabs)');
+      } else {
+        throw new Error('Sai tài khoản hoặc mật khẩu');
+      }
     } catch (error: any) {
+      console.log('❌ Login error:', error);
       Alert.alert(
         'Đăng nhập thất bại',
-        error.message || 'Vui lòng kiểm tra lại thông tin'
+        error?.response?.data?.message ||
+          error.message ||
+          'Vui lòng kiểm tra lại thông tin'
       );
     } finally {
       setLoading(false);
