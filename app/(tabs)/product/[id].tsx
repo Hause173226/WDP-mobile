@@ -23,6 +23,9 @@ import {
   Gauge,
   Battery,
   Heart,
+  CheckCircle,
+  XCircle,
+  Shield,
 } from 'lucide-react-native';
 import { COLORS } from '@/constants/colors';
 import Button from '@/components/Button';
@@ -62,6 +65,7 @@ const mapListingToProduct = (listing: any): Product => {
     sellerName: listing.sellerId?.fullName || 'Người bán',
     sellerRating: 4.5, // Default rating, có thể lấy từ API nếu có
     featured: listing.status === 'Published' || listing.featured === true,
+    status: listing.status || 'Published', // Lưu status từ API
     createdAt: listing.createdAt || new Date().toISOString(),
     updatedAt: listing.updatedAt || new Date().toISOString(),
   };
@@ -404,6 +408,30 @@ export default function ProductDetailScreen() {
           <View style={styles.titleSection}>
             <Text style={styles.name}>{product.name}</Text>
             <Text style={styles.price}>{formatPrice(product.price)}</Text>
+
+            {/* Status Badge */}
+            <View style={styles.statusBadgeContainer}>
+              {listingStatus === 'Published' && (
+                <View style={styles.statusBadgePublished}>
+                  <CheckCircle size={14} color={COLORS.success} />
+                  <Text style={styles.statusBadgeTextPublished}>Đang bán</Text>
+                </View>
+              )}
+              {listingStatus === 'InTransaction' && (
+                <View style={styles.statusBadgeInTransaction}>
+                  <Shield size={14} color={COLORS.warning} />
+                  <Text style={styles.statusBadgeTextInTransaction}>
+                    Đang giao dịch
+                  </Text>
+                </View>
+              )}
+              {listingStatus === 'Sold' && (
+                <View style={styles.statusBadgeSold}>
+                  <XCircle size={14} color={COLORS.error} />
+                  <Text style={styles.statusBadgeTextSold}>Đã bán</Text>
+                </View>
+              )}
+            </View>
           </View>
 
           <View style={styles.sellerCard}>
@@ -685,6 +713,55 @@ const styles = StyleSheet.create({
     fontSize: 28,
     fontWeight: 'bold',
     color: COLORS.primary[600],
+    marginBottom: 12,
+  },
+  statusBadgeContainer: {
+    marginTop: 8,
+  },
+  statusBadgePublished: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'flex-start',
+    backgroundColor: '#D1FAE5', // green-100
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
+    gap: 6,
+  },
+  statusBadgeTextPublished: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#065F46', // green-800
+  },
+  statusBadgeInTransaction: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'flex-start',
+    backgroundColor: '#FED7AA', // orange-100
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
+    gap: 6,
+  },
+  statusBadgeTextInTransaction: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#9A3412', // orange-800
+  },
+  statusBadgeSold: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'flex-start',
+    backgroundColor: '#FEE2E2', // red-100
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
+    gap: 6,
+  },
+  statusBadgeTextSold: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#991B1B', // red-800
   },
   sellerCard: {
     flexDirection: 'row',

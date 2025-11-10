@@ -45,6 +45,7 @@ const mapListingToProduct = (listing: any): Product => {
     sellerName: listing.sellerId?.fullName || 'Người bán',
     sellerRating: 4.5, // Default rating, có thể lấy từ API nếu có
     featured: listing.status === 'Published' || listing.featured === true,
+    status: listing.status || 'Published', // Lưu status từ API
     createdAt: listing.createdAt || new Date().toISOString(),
     updatedAt: listing.updatedAt || new Date().toISOString(),
   };
