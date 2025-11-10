@@ -16,6 +16,7 @@ export interface Product {
   sellerName: string;
   sellerRating?: number;
   featured?: boolean;
+  status?: string; // Published, Sold, InTransaction, Draft, PendingReview
   createdAt: string;
   updatedAt: string;
 }

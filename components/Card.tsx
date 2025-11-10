@@ -17,19 +17,50 @@ export default function Card({ product, onPress }: CardProps) {
     }).format(price);
   };
 
+  const getStatusBadge = () => {
+    if (!product.status) return null;
+
+    if (product.status === 'Sold') {
+      return (
+        <View style={styles.statusBadgeSold}>
+          <Text style={styles.statusBadgeText}>Đã bán</Text>
+        </View>
+      );
+    }
+
+    if (product.status === 'InTransaction') {
+      return (
+        <View style={styles.statusBadgeInTransaction}>
+          <Text style={styles.statusBadgeText}>Đang giao dịch</Text>
+        </View>
+      );
+    }
+
+    return null;
+  };
+
   return (
     <TouchableOpacity style={styles.card} onPress={onPress} activeOpacity={0.7}>
       <View style={styles.imageContainer}>
         <Image
-          source={{ uri: product.images[0] || 'https://images.pexels.com/photos/110844/pexels-photo-110844.jpeg' }}
+          source={{
+            uri:
+              product.images[0] ||
+              'https://images.pexels.com/photos/110844/pexels-photo-110844.jpeg',
+          }}
           style={styles.image}
           resizeMode="cover"
         />
-        {product.featured && (
-          <View style={styles.featuredBadge}>
-            <Text style={styles.featuredText}>Nổi bật</Text>
-          </View>
-        )}
+        {/* Status Badge - hiển thị ở góc trên bên trái */}
+        {getStatusBadge()}
+        {/* Featured Badge - hiển thị ở góc trên bên phải */}
+        {product.featured &&
+          product.status !== 'Sold' &&
+          product.status !== 'InTransaction' && (
+            <View style={styles.featuredBadge}>
+              <Text style={styles.featuredText}>Nổi bật</Text>
+            </View>
+          )}
       </View>
 
       <View style={styles.content}>
@@ -49,8 +80,14 @@ export default function Card({ product, onPress }: CardProps) {
 
           {product.sellerRating && (
             <View style={styles.ratingContainer}>
-              <Star color={COLORS.accent.yellow} size={14} fill={COLORS.accent.yellow} />
-              <Text style={styles.rating}>{product.sellerRating.toFixed(1)}</Text>
+              <Star
+                color={COLORS.accent.yellow}
+                size={14}
+                fill={COLORS.accent.yellow}
+              />
+              <Text style={styles.rating}>
+                {product.sellerRating.toFixed(1)}
+              </Text>
             </View>
           )}
         </View>
@@ -89,6 +126,29 @@ const styles = StyleSheet.create({
   },
   featuredText: {
     color: COLORS.gray[900],
+    fontSize: 12,
+    fontWeight: 'bold',
+  },
+  statusBadgeSold: {
+    position: 'absolute',
+    top: 12,
+    left: 12,
+    backgroundColor: '#EF4444', // Red
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 6,
+  },
+  statusBadgeInTransaction: {
+    position: 'absolute',
+    top: 12,
+    left: 12,
+    backgroundColor: '#F97316', // Orange
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 6,
+  },
+  statusBadgeText: {
+    color: COLORS.secondary.white,
     fontSize: 12,
     fontWeight: 'bold',
   },
