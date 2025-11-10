@@ -2,7 +2,7 @@ import React from 'react';
 import { View, Text, Image, TouchableOpacity, StyleSheet } from 'react-native';
 import { MapPin, Star } from 'lucide-react-native';
 import { COLORS } from '@/constants/colors';
-import { Product } from '@/services/api';
+import { Product } from '@/types/product';
 
 interface CardProps {
   product: Product;

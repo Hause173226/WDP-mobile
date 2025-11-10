@@ -5,84 +5,56 @@ import {
   ScrollView,
   StyleSheet,
   TouchableOpacity,
-  FlatList,
   ActivityIndicator,
+  Alert,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Zap, Battery, Search } from 'lucide-react-native';
+import { Zap, Battery } from 'lucide-react-native';
 import { COLORS } from '@/constants/colors';
 import Card from '@/components/Card';
 import SearchBar from '@/components/SearchBar';
-import { api, Product } from '@/services/api';
+import { Product } from '@/types/product';
+import { listingService } from '@/services/listingService';
 
-const MOCK_PRODUCTS: Product[] = [
-  {
-    id: '1',
-    name: 'VinFast VF8 Plus 2023',
-    description: 'SUV điện cao cấp, pin 87.7kWh',
-    price: 1200000000,
-    category: 'electric_vehicle',
-    condition: 'like_new',
-    brand: 'VinFast',
-    model: 'VF8 Plus',
-    year: 2023,
-    batteryCapacity: 87.7,
-    mileage: 5000,
-    location: 'Hà Nội',
-    images: ['https://images.pexels.com/photos/110844/pexels-photo-110844.jpeg'],
-    sellerId: 'seller1',
-    sellerName: 'Nguyễn Văn A',
-    sellerRating: 4.8,
-    featured: true,
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-  },
-  {
-    id: '2',
-    name: 'Pin LFP 60kWh',
-    description: 'Pin sắt lithium phosphate, còn mới 95%',
-    price: 150000000,
-    category: 'battery',
-    condition: 'good',
-    batteryCapacity: 60,
-    location: 'TP.HCM',
-    images: ['https://images.pexels.com/photos/257736/pexels-photo-257736.jpeg'],
-    sellerId: 'seller2',
-    sellerName: 'Trần Thị B',
-    sellerRating: 4.5,
-    featured: true,
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-  },
-  {
-    id: '3',
-    name: 'Tesla Model 3 Long Range',
-    description: 'Xe nhập Mỹ, full option, pin còn 92%',
-    price: 1500000000,
-    category: 'electric_vehicle',
-    condition: 'good',
-    brand: 'Tesla',
-    model: 'Model 3',
-    year: 2022,
-    batteryCapacity: 82,
-    mileage: 15000,
-    location: 'Đà Nẵng',
-    images: ['https://images.pexels.com/photos/193999/pexels-photo-193999.jpeg'],
-    sellerId: 'seller3',
-    sellerName: 'Lê Văn C',
-    sellerRating: 4.9,
-    featured: false,
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-  },
-];
+// Helper function để map Listing từ API sang Product type
+const mapListingToProduct = (listing: any): Product => {
+  return {
+    id: listing._id,
+    name: `${listing.make} ${listing.model} ${listing.year}`,
+    description: listing.description || '',
+    price: listing.priceListed,
+    category:
+      listing.type === 'Car'
+        ? 'electric_vehicle'
+        : listing.type === 'Battery'
+        ? 'battery'
+        : 'parts',
+    condition: listing.condition?.toLowerCase() || 'good',
+    brand: listing.make,
+    model: listing.model,
+    year: listing.year,
+    batteryCapacity: listing.batteryCapacityKWh,
+    mileage: listing.mileageKm,
+    location:
+      `${listing.location?.district || ''}, ${
+        listing.location?.city || ''
+      }`.trim() || 'N/A',
+    images: listing.photos?.map((p: any) => p.url) || [],
+    sellerId: listing.sellerId?._id || listing.sellerId || '',
+    sellerName: listing.sellerId?.fullName || 'Người bán',
+    sellerRating: 4.5, // Default rating, có thể lấy từ API nếu có
+    featured: listing.status === 'Published' || listing.featured === true,
+    createdAt: listing.createdAt || new Date().toISOString(),
+    updatedAt: listing.updatedAt || new Date().toISOString(),
+  };
+};
 
 export default function HomeScreen() {
   const router = useRouter();
-  const [products, setProducts] = useState<Product[]>(MOCK_PRODUCTS);
+  const [products, setProducts] = useState<Product[]>([]);
   const [featuredProducts, setFeaturedProducts] = useState<Product[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
 
@@ -93,31 +65,63 @@ export default function HomeScreen() {
   const loadProducts = async () => {
     setLoading(true);
     try {
-      setProducts(MOCK_PRODUCTS);
-      setFeaturedProducts(MOCK_PRODUCTS.filter((p) => p.featured));
-    } catch (error) {
+      // Fetch tất cả listings
+      const params: Record<string, string | number | undefined | null> = {
+        page: 1,
+        limit: 20,
+        sortBy: 'newest',
+      };
+
+      // Thêm filter category nếu có
+      if (selectedCategory === 'electric_vehicle') {
+        params.type = 'Car';
+      } else if (selectedCategory === 'battery') {
+        params.type = 'Battery';
+      }
+
+      // Thêm keyword search nếu có
+      if (searchQuery) {
+        params.keyword = searchQuery;
+      }
+
+      const response = await listingService.getListings(params);
+
+      // Map listings sang Product format
+      const listings = response.listings || response.data?.listings || [];
+      const mappedProducts = listings.map(mapListingToProduct);
+
+      setProducts(mappedProducts);
+
+      // Lọc featured products (status Published hoặc có flag featured)
+      const featured = mappedProducts.filter(
+        (p: any) => p.featured || (p.sellerRating && p.sellerRating >= 4.5)
+      );
+      setFeaturedProducts(featured.slice(0, 5)); // Lấy 5 tin nổi bật đầu tiên
+    } catch (error: any) {
       console.error('Error loading products:', error);
+      Alert.alert(
+        'Lỗi',
+        error?.response?.data?.message ||
+          'Không thể tải danh sách sản phẩm. Vui lòng thử lại.'
+      );
     } finally {
       setLoading(false);
     }
   };
 
+  // Reload khi search hoặc category thay đổi
+  useEffect(() => {
+    if (!loading) {
+      loadProducts();
+    }
+  }, [searchQuery, selectedCategory]);
+
   const handleSearch = (query: string) => {
     setSearchQuery(query);
-    if (query) {
-      const filtered = MOCK_PRODUCTS.filter((p) =>
-        p.name.toLowerCase().includes(query.toLowerCase())
-      );
-      setProducts(filtered);
-    } else {
-      setProducts(MOCK_PRODUCTS);
-    }
   };
 
   const handleCategorySelect = (category: string) => {
-    setSelectedCategory(category);
-    const filtered = MOCK_PRODUCTS.filter((p) => p.category === category);
-    setProducts(filtered);
+    setSelectedCategory(selectedCategory === category ? null : category);
   };
 
   const categories = [
@@ -168,7 +172,8 @@ export default function HomeScreen() {
                 <Text
                   style={[
                     styles.categoryName,
-                    selectedCategory === category.id && styles.categoryNameActive,
+                    selectedCategory === category.id &&
+                      styles.categoryNameActive,
                   ]}
                 >
                   {category.name}
@@ -178,33 +183,46 @@ export default function HomeScreen() {
           })}
         </View>
 
-        {featuredProducts.length > 0 && (
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Tin nổi bật</Text>
-            {featuredProducts.map((product) => (
-              <Card
-                key={product.id}
-                product={product}
-                onPress={() => router.push(`/(tabs)/product/${product.id}`)}
-              />
-            ))}
-          </View>
-        )}
-
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Tất cả sản phẩm</Text>
-          {loading ? (
+        {loading ? (
+          <View style={styles.loadingContainer}>
             <ActivityIndicator size="large" color={COLORS.primary[600]} />
-          ) : (
-            products.map((product) => (
-              <Card
-                key={product.id}
-                product={product}
-                onPress={() => router.push(`/(tabs)/product/${product.id}`)}
-              />
-            ))
-          )}
-        </View>
+            <Text style={styles.loadingText}>Đang tải...</Text>
+          </View>
+        ) : (
+          <>
+            {featuredProducts.length > 0 && (
+              <View style={styles.section}>
+                <Text style={styles.sectionTitle}>Tin nổi bật</Text>
+                {featuredProducts.map((product) => (
+                  <Card
+                    key={product.id}
+                    product={product}
+                    onPress={() => router.push(`/(tabs)/product/${product.id}`)}
+                  />
+                ))}
+              </View>
+            )}
+
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>Tất cả sản phẩm</Text>
+              {products.length === 0 ? (
+                <View style={styles.emptyContainer}>
+                  <Text style={styles.emptyText}>
+                    Không tìm thấy sản phẩm nào
+                  </Text>
+                </View>
+              ) : (
+                products.map((product) => (
+                  <Card
+                    key={product.id}
+                    product={product}
+                    onPress={() => router.push(`/(tabs)/product/${product.id}`)}
+                  />
+                ))
+              )}
+            </View>
+          </>
+        )}
       </ScrollView>
     </View>
   );
@@ -279,5 +297,22 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: COLORS.gray[900],
     marginBottom: 16,
+  },
+  loadingContainer: {
+    padding: 40,
+    alignItems: 'center',
+  },
+  loadingText: {
+    marginTop: 12,
+    fontSize: 14,
+    color: COLORS.gray[600],
+  },
+  emptyContainer: {
+    padding: 40,
+    alignItems: 'center',
+  },
+  emptyText: {
+    fontSize: 16,
+    color: COLORS.gray[500],
   },
 });

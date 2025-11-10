@@ -35,8 +35,6 @@ export default function LoginScreen() {
       // Gọi API signin từ BE mới
       const result = await authAPI.signIn({ email, password });
 
-      console.log('✅ Login result:', result);
-
       // BE trả về accessToken, không phải token
       if (result?.user && result?.accessToken) {
         // Lưu token vào AsyncStorage
