@@ -14,7 +14,6 @@ import { Camera, Upload, X } from 'lucide-react-native';
 import { COLORS } from '@/constants/colors';
 import Button from '@/components/Button';
 import Header from '@/components/Header';
-import { api } from '@/services/api';
 import { useUserStore } from '@/store/userStore';
 
 export default function PostListingScreen() {
@@ -49,20 +48,39 @@ export default function PostListingScreen() {
     setImages(images.filter((_, i) => i !== index));
   };
 
-  const getSuggestedPrice = async () => {
-    try {
-      const suggested = await api.getSuggestedPrice({
-        category,
-        brand,
-        model,
-        year: parseInt(year),
-        condition,
-      });
-      setPrice(suggested.toString());
-      Alert.alert('Gợi ý giá', `Giá đề xuất: ${suggested.toLocaleString()} đ`);
-    } catch (error) {
-      Alert.alert('Lỗi', 'Không thể lấy giá gợi ý');
+  const getSuggestedPrice = () => {
+    // Tính giá gợi ý dựa trên category và các thông tin khác
+    let basePrice = 0;
+    if (category === 'electric_vehicle') {
+      basePrice = 500000000; // 500 triệu
+    } else if (category === 'battery') {
+      basePrice = 50000000; // 50 triệu
+    } else {
+      basePrice = 10000000; // 10 triệu
     }
+
+    // Điều chỉnh theo năm
+    if (year) {
+      const yearNum = parseInt(year);
+      const currentYear = new Date().getFullYear();
+      const age = currentYear - yearNum;
+      if (age > 0) {
+        basePrice = Math.round(basePrice * (1 - age * 0.1)); // Giảm 10% mỗi năm
+      }
+    }
+
+    // Điều chỉnh theo condition
+    if (condition === 'new') {
+      basePrice = Math.round(basePrice * 1.2);
+    } else if (condition === 'like_new') {
+      basePrice = Math.round(basePrice * 1.1);
+    } else if (condition === 'fair') {
+      basePrice = Math.round(basePrice * 0.8);
+    }
+
+    const suggested = Math.max(basePrice, 1000000); // Tối thiểu 1 triệu
+    setPrice(suggested.toString());
+    Alert.alert('Gợi ý giá', `Giá đề xuất: ${suggested.toLocaleString('vi-VN')} đ`);
   };
 
   const handleSubmit = async () => {
