@@ -34,7 +34,7 @@ export const useUserStore = create<UserState>((set) => ({
   },
 
   logout: async () => {
-    await AsyncStorage.removeItem('user');
+    await AsyncStorage.multiRemove(['accessToken', 'refreshToken', 'user']);
     set({ user: null, isAuthenticated: false });
   },
 

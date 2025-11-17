@@ -16,7 +16,8 @@ const axiosInstance = axios.create({
 // Request interceptor
 axiosInstance.interceptors.request.use(
   async (config) => {
-    const token = await AsyncStorage.getItem('token');
+    // Lấy accessToken thay vì token
+    const token = await AsyncStorage.getItem('accessToken');
 
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
@@ -33,7 +34,8 @@ axiosInstance.interceptors.response.use(
   (response) => response,
   async (error) => {
     if (error.response?.status === 401) {
-      await AsyncStorage.multiRemove(['token', 'user']);
+      // Xóa accessToken và refreshToken khi unauthorized
+      await AsyncStorage.multiRemove(['accessToken', 'refreshToken', 'user']);
     }
     return Promise.reject(error);
   }

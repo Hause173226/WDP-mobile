@@ -3,6 +3,7 @@ import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { ArrowLeft, Bell } from 'lucide-react-native';
 import { COLORS } from '@/constants/colors';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 interface HeaderProps {
   title: string;
@@ -19,12 +20,13 @@ export default function Header({
   onBackPress,
   onNotificationPress,
 }: HeaderProps) {
+  const insets = useSafeAreaInsets();
   return (
     <LinearGradient
       colors={[COLORS.primary[900], COLORS.primary[600]]}
       start={{ x: 0, y: 0 }}
       end={{ x: 1, y: 0 }}
-      style={styles.header}
+      style={[styles.header, { paddingTop: (insets.top ?? 0) + 12 }]}
     >
       <View style={styles.container}>
         {showBack ? (
@@ -38,7 +40,10 @@ export default function Header({
         <Text style={styles.title}>{title}</Text>
 
         {showNotifications ? (
-          <TouchableOpacity onPress={onNotificationPress} style={styles.iconButton}>
+          <TouchableOpacity
+            onPress={onNotificationPress}
+            style={styles.iconButton}
+          >
             <Bell color={COLORS.secondary.white} size={24} />
           </TouchableOpacity>
         ) : (
@@ -51,7 +56,7 @@ export default function Header({
 
 const styles = StyleSheet.create({
   header: {
-    paddingTop: 50,
+    paddingTop: 0,
     paddingBottom: 16,
     paddingHorizontal: 16,
   },
