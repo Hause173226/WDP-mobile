@@ -1,9 +1,10 @@
 export const COLORS = {
   primary: {
-    50: '#EFF6FF', // thêm dòng này (chọn giá trị hex bạn muốn)
-    900: '#1E3A8A',
-    700: '#1D4ED8',
+    50: '#EFF6FF',
+    100: '#DBEAFE',
     600: '#2563EB',
+    700: '#1D4ED8',
+    900: '#1E3A8A',
   },
   secondary: {
     white: '#FFFFFF',

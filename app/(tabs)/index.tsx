@@ -10,7 +10,6 @@ import {
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Zap, Battery } from 'lucide-react-native';
 import { COLORS } from '@/constants/colors';
 import Card from '@/components/Card';
 import SearchBar from '@/components/SearchBar';
@@ -53,11 +52,9 @@ const mapListingToProduct = (listing: any): Product => {
 
 export default function HomeScreen() {
   const router = useRouter();
-  const [products, setProducts] = useState<Product[]>([]);
+  const [latestProducts, setLatestProducts] = useState<Product[]>([]);
   const [featuredProducts, setFeaturedProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
 
   useEffect(() => {
     loadProducts();
@@ -66,38 +63,24 @@ export default function HomeScreen() {
   const loadProducts = async () => {
     setLoading(true);
     try {
-      // Fetch tất cả listings
-      const params: Record<string, string | number | undefined | null> = {
+      // Fetch latest products
+      const latestParams = {
         page: 1,
-        limit: 20,
+        limit: 10,
         sortBy: 'newest',
       };
 
-      // Thêm filter category nếu có
-      if (selectedCategory === 'electric_vehicle') {
-        params.type = 'Car';
-      } else if (selectedCategory === 'battery') {
-        params.type = 'Battery';
-      }
+      const latestResponse = await listingService.getListings(latestParams);
+      const latestListings =
+        latestResponse.listings || latestResponse.data?.listings || [];
+      const mappedLatest = latestListings.map(mapListingToProduct);
+      setLatestProducts(mappedLatest);
 
-      // Thêm keyword search nếu có
-      if (searchQuery) {
-        params.keyword = searchQuery;
-      }
-
-      const response = await listingService.getListings(params);
-
-      // Map listings sang Product format
-      const listings = response.listings || response.data?.listings || [];
-      const mappedProducts = listings.map(mapListingToProduct);
-
-      setProducts(mappedProducts);
-
-      // Lọc featured products (status Published hoặc có flag featured)
-      const featured = mappedProducts.filter(
+      // Get featured products (first 5 from latest)
+      const featured = mappedLatest.filter(
         (p: any) => p.featured || (p.sellerRating && p.sellerRating >= 4.5)
       );
-      setFeaturedProducts(featured.slice(0, 5)); // Lấy 5 tin nổi bật đầu tiên
+      setFeaturedProducts(featured.slice(0, 5));
     } catch (error: any) {
       console.error('Error loading products:', error);
       Alert.alert(
@@ -110,25 +93,10 @@ export default function HomeScreen() {
     }
   };
 
-  // Reload khi search hoặc category thay đổi
-  useEffect(() => {
-    if (!loading) {
-      loadProducts();
-    }
-  }, [searchQuery, selectedCategory]);
-
-  const handleSearch = (query: string) => {
-    setSearchQuery(query);
+  const handleSearchFocus = () => {
+    // Navigate to search tab when search is focused
+    router.push('/(tabs)/search');
   };
-
-  const handleCategorySelect = (category: string) => {
-    setSelectedCategory(selectedCategory === category ? null : category);
-  };
-
-  const categories = [
-    { id: 'electric_vehicle', name: 'Xe điện', icon: Zap },
-    { id: 'battery', name: 'Pin', icon: Battery },
-  ];
 
   return (
     <View style={styles.container}>
@@ -143,47 +111,13 @@ export default function HomeScreen() {
         </Text>
       </LinearGradient>
 
-      <SearchBar
-        onSearch={handleSearch}
-        value={searchQuery}
-        onFilterPress={() => {}}
-      />
+      <TouchableOpacity onPress={handleSearchFocus} activeOpacity={1}>
+        <View pointerEvents="none">
+          <SearchBar onSearch={() => {}} value="" onFilterPress={() => {}} />
+        </View>
+      </TouchableOpacity>
 
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-        <View style={styles.categoriesContainer}>
-          {categories.map((category) => {
-            const Icon = category.icon;
-            return (
-              <TouchableOpacity
-                key={category.id}
-                style={[
-                  styles.categoryCard,
-                  selectedCategory === category.id && styles.categoryCardActive,
-                ]}
-                onPress={() => handleCategorySelect(category.id)}
-              >
-                <Icon
-                  color={
-                    selectedCategory === category.id
-                      ? COLORS.secondary.white
-                      : COLORS.primary[600]
-                  }
-                  size={32}
-                />
-                <Text
-                  style={[
-                    styles.categoryName,
-                    selectedCategory === category.id &&
-                      styles.categoryNameActive,
-                  ]}
-                >
-                  {category.name}
-                </Text>
-              </TouchableOpacity>
-            );
-          })}
-        </View>
-
         {loading ? (
           <View style={styles.loadingContainer}>
             <ActivityIndicator size="large" color={COLORS.primary[600]} />
@@ -193,7 +127,14 @@ export default function HomeScreen() {
           <>
             {featuredProducts.length > 0 && (
               <View style={styles.section}>
-                <Text style={styles.sectionTitle}>Tin nổi bật</Text>
+                <View style={styles.sectionHeader}>
+                  <Text style={styles.sectionTitle}>⭐ Tin nổi bật</Text>
+                  <TouchableOpacity
+                    onPress={() => router.push('/(tabs)/search')}
+                  >
+                    <Text style={styles.seeAllText}>Xem tất cả →</Text>
+                  </TouchableOpacity>
+                </View>
                 {featuredProducts.map((product) => (
                   <Card
                     key={product.id}
@@ -204,24 +145,31 @@ export default function HomeScreen() {
               </View>
             )}
 
-            <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Tất cả sản phẩm</Text>
-              {products.length === 0 ? (
-                <View style={styles.emptyContainer}>
-                  <Text style={styles.emptyText}>
-                    Không tìm thấy sản phẩm nào
-                  </Text>
+            {latestProducts.length > 0 && (
+              <View style={styles.section}>
+                <View style={styles.sectionHeader}>
+                  <Text style={styles.sectionTitle}>🆕 Mới nhất</Text>
+                  <TouchableOpacity
+                    onPress={() => router.push('/(tabs)/search')}
+                  >
+                    <Text style={styles.seeAllText}>Xem tất cả →</Text>
+                  </TouchableOpacity>
                 </View>
-              ) : (
-                products.map((product) => (
+                {latestProducts.slice(0, 8).map((product) => (
                   <Card
                     key={product.id}
                     product={product}
                     onPress={() => router.push(`/(tabs)/product/${product.id}`)}
                   />
-                ))
-              )}
-            </View>
+                ))}
+              </View>
+            )}
+
+            {!loading && latestProducts.length === 0 && (
+              <View style={styles.emptyContainer}>
+                <Text style={styles.emptyText}>Không có sản phẩm nào</Text>
+              </View>
+            )}
           </>
         )}
       </ScrollView>
@@ -259,45 +207,25 @@ const styles = StyleSheet.create({
   content: {
     flex: 1,
   },
-  categoriesContainer: {
-    flexDirection: 'row',
-    paddingHorizontal: 16,
-    paddingVertical: 16,
-    gap: 12,
-  },
-  categoryCard: {
-    flex: 1,
-    backgroundColor: COLORS.secondary.white,
-    borderRadius: 16,
-    padding: 20,
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  categoryCardActive: {
-    backgroundColor: COLORS.primary[600],
-  },
-  categoryName: {
-    marginTop: 8,
-    fontSize: 14,
-    fontWeight: '600',
-    color: COLORS.gray[800],
-  },
-  categoryNameActive: {
-    color: COLORS.secondary.white,
-  },
   section: {
     paddingHorizontal: 16,
     marginBottom: 24,
+  },
+  sectionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
   },
   sectionTitle: {
     fontSize: 20,
     fontWeight: 'bold',
     color: COLORS.gray[900],
-    marginBottom: 16,
+  },
+  seeAllText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: COLORS.primary[600],
   },
   loadingContainer: {
     padding: 40,

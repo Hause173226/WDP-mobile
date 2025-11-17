@@ -147,7 +147,7 @@ export default function RegisterScreen() {
       }
 
       if (response.accessToken) {
-        await AsyncStorage.setItem('token', response.accessToken);
+        await AsyncStorage.setItem('accessToken', response.accessToken);
       }
       if (response.refreshToken) {
         await AsyncStorage.setItem('refreshToken', response.refreshToken);
